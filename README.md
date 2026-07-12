@@ -94,7 +94,7 @@ GMAIL_USER=your-email@gmail.com
 GMAIL_APP_PASSWORD=your-gmail-app-password
 JWT_SECRET=your-jwt-secret
 
-# Admin login — all four must match to log in as admin
+
 ADMIN_EMAIL=admin@example.com
 ADMIN_ID=admin001
 ADMIN_PASSWORD=your-admin-password
