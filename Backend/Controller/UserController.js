@@ -8,11 +8,14 @@ const redisClient = require("../Redish/RedishConnect.js");
 require("dotenv").config();
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
+  connectionTimeout: 10000,
 });
 
 const Signup = async (req, res) => {
