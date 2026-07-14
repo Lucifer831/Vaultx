@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
-import { Shield } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ShieldCheck, Mail, KeyRound, Lock, Fingerprint, ArrowLeft } from "lucide-react";
+import vault from "/vault1.png";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -40,73 +41,120 @@ export default function AdminLogin() {
     }
   };
 
+  const fields = [
+    {
+      label: "Email",
+      value: email,
+      setter: setEmail,
+      type: "email",
+      placeholder: "admin@vaultx.com",
+      icon: Mail,
+    },
+    {
+      label: "Admin ID",
+      value: id,
+      setter: setId,
+      type: "text",
+      placeholder: "Enter your admin ID",
+      icon: Fingerprint,
+    },
+    {
+      label: "Password",
+      value: password,
+      setter: setPassword,
+      type: "password",
+      placeholder: "Enter admin password",
+      icon: KeyRound,
+    },
+    {
+      label: "Global Password",
+      value: globalPassword,
+      setter: setGlobalPassword,
+      type: "password",
+      placeholder: "Enter global password",
+      icon: Lock,
+    },
+  ];
+
   return (
-    <div className="bg-[#090a09] min-h-screen flex justify-center items-center px-4">
-      <div className="bg-[#111111] border border-gray-700 rounded-3xl shadow-2xl p-8 w-full max-w-md">
-        <div className="flex justify-center mb-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#6245F5]/20 flex items-center justify-center">
-            <Shield size={28} className="text-[#8b7bff]" />
+    <div className="min-h-screen bg-[#090a09] flex">
+      {/* Left brand panel */}
+      <div className="hidden lg:flex w-1/2 relative overflow-hidden items-center justify-center border-r border-white/10">
+        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-[#6245F5]/20 blur-[120px]" />
+        <div className="absolute -bottom-32 -right-10 w-96 h-96 rounded-full bg-[#8b7bff]/10 blur-[120px]" />
+
+        <div className="relative z-10 text-center px-12">
+          <img src={vault} alt="VaultX" className="w-[300px] mx-auto object-contain" />
+          <div className="flex items-center justify-center gap-2 mt-2 mb-6">
+            <ShieldCheck size={16} className="text-[#8b7bff]" />
+            <span className="text-[#8b7bff] text-xs font-semibold tracking-[0.2em] uppercase">
+              Admin Console
+            </span>
           </div>
+          <p className="text-white/40 text-sm max-w-xs mx-auto leading-relaxed">
+            Manage users, storage requests, and active share links from one secure control center.
+          </p>
         </div>
+      </div>
 
-        <h1 className="text-3xl text-white font-bold text-center">Admin Login</h1>
-        <p className="text-gray-400 text-center mt-3">
-          Sign in with your admin credentials
-        </p>
+      {/* Right form panel */}
+      <div className="flex-1 flex flex-col justify-center items-center px-4 py-12 relative">
+        <Link
+          to="/"
+          className="absolute top-8 left-8 flex items-center gap-2 text-gray-500 hover:text-white text-sm transition"
+        >
+          <ArrowLeft size={16} />
+          Back to site
+        </Link>
 
-        <form onSubmit={handleSubmit} className="mt-8">
-          <div className="mb-5">
-            <label className="block text-gray-300 mb-2 font-medium">Email</label>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              placeholder="admin@vaultx.com"
-              className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500"
-            />
+        <div className="w-full max-w-md">
+          <div className="lg:hidden flex justify-center mb-6">
+            <img src={vault} alt="VaultX" className="w-[180px] object-contain" />
           </div>
 
-          <div className="mb-5">
-            <label className="block text-gray-300 mb-2 font-medium">Admin ID</label>
-            <input
-              value={id}
-              onChange={(e) => setId(e.target.value)}
-              type="text"
-              placeholder="Enter your admin ID"
-              className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500"
-            />
+          <div className="bg-[#111111] border border-white/10 rounded-3xl shadow-2xl p-8">
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 rounded-2xl bg-[#6245F5]/20 flex items-center justify-center">
+                <ShieldCheck size={28} className="text-[#8b7bff]" />
+              </div>
+            </div>
+
+            <h1 className="text-3xl text-white font-bold text-center">Admin Login</h1>
+            <p className="text-gray-500 text-center mt-2 text-sm">
+              Sign in with your admin credentials to continue
+            </p>
+
+            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+              {fields.map(({ label, value, setter, type, placeholder, icon: Icon }) => (
+                <div key={label}>
+                  <label className="block text-gray-300 mb-2 font-medium text-sm">{label}</label>
+                  <div className="relative">
+                    <Icon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+                    <input
+                      value={value}
+                      onChange={(e) => setter(e.target.value)}
+                      type={type}
+                      placeholder={placeholder}
+                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-[#6245F5] transition"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#6245F5] hover:bg-[#5238d6] transition py-3 rounded-xl text-white font-semibold disabled:opacity-50 mt-2 shadow-lg shadow-[#6245F5]/20"
+              >
+                {loading ? "Signing in..." : "Login as Admin"}
+              </button>
+            </form>
           </div>
 
-          <div className="mb-5">
-            <label className="block text-gray-300 mb-2 font-medium">Password</label>
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              placeholder="Enter admin password"
-              className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-gray-300 mb-2 font-medium">Global Password</label>
-            <input
-              value={globalPassword}
-              onChange={(e) => setGlobalPassword(e.target.value)}
-              type="password"
-              placeholder="Enter global password"
-              className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 transition py-3 rounded-xl text-white font-semibold disabled:opacity-50"
-          >
-            {loading ? "Signing in..." : "Login as Admin"}
-          </button>
-        </form>
+          <p className="text-center text-gray-600 text-xs mt-6">
+            Restricted access — authorized personnel only
+          </p>
+        </div>
       </div>
     </div>
   );

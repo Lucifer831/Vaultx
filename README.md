@@ -35,6 +35,7 @@ A secure, full-stack cloud storage platform — inspired by Google Drive — bui
 - Node.js + Express 5
 - MongoDB + Mongoose
 - Redis (OTP session storage)
+- Supabase Storage (file storage — uploads, downloads, deletes)
 - JWT for authentication
 - Multer for file uploads
 - Nodemailer for OTP emails
@@ -69,8 +70,9 @@ VaultX/
 
 ### Prerequisites
 - Node.js
-- MongoDB running locally (or a connection string)
-- Redis running locally (or a connection string)
+- MongoDB running locally (or a connection string, e.g. MongoDB Atlas)
+- Redis running locally (or a connection string, e.g. Upstash)
+- A [Supabase](https://supabase.com) project with a storage bucket (for file uploads)
 - A Gmail account with an [App Password](https://myaccount.google.com/apppasswords) for sending OTP emails
 
 ### 1. Clone the repo
@@ -99,7 +101,13 @@ ADMIN_EMAIL=admin@example.com
 ADMIN_ID=admin001
 ADMIN_PASSWORD=your-admin-password
 GLOBAL_PASSWORD=your-global-password
+
+# Supabase (file storage)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
+
+> ⚠️ `SUPABASE_SERVICE_ROLE_KEY` bypasses Row Level Security — keep it server-side only, never expose it in the frontend.
 
 Run the backend:
 ```bash

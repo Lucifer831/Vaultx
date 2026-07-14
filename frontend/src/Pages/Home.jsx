@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import Header from "../Component/Header";
 import Mainleft from "./Mainleft";
 import Mainright from "./Mainright";
+import DashboardStats from "./DashboardStats";
+import ActiveLinksList from "./ActiveLinksList";
 
 
 
@@ -52,11 +54,16 @@ export default function Home() {
            <Header searchQuery={searchQuery} onSearchChange={setSearchQuery}/>
         </div>
         <div className="flex">
-            <div className="w-[300px] shrink-0 h-[calc(100vh-80px)] bg-[#1c1b1c] overflow-y-auto">
+            <div className="w-[280px] shrink-0 h-[calc(100vh-80px)] bg-[#1c1b1c] overflow-y-auto">
             <Mainleft activeView={activeView} setActiveView={setActiveView}/>
             </div>
             <div className="flex-1 h-[calc(100vh-80px)] bg-[#131314] overflow-y-auto">
-              <Mainright activeView={activeView} searchQuery={searchQuery}/>
+              {activeView === "drive" && <DashboardStats />}
+              {activeView === "links" ? (
+                <ActiveLinksList />
+              ) : (
+                <Mainright activeView={activeView} searchQuery={searchQuery}/>
+              )}
             </div>
 
         </div>

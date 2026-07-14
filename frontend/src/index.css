@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --animate-wiggle: wiggle 2.5s ease-in-out infinite;
+  --animate-glow: glow 2.2s ease-in-out infinite;
+}
+
+@keyframes wiggle {
+  0%, 92%, 100% { transform: rotate(0deg); }
+  94% { transform: rotate(-10deg); }
+  96% { transform: rotate(10deg); }
+  98% { transform: rotate(-6deg); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.35), inset 2px 0 0 0 rgba(52, 211, 153, 0.9); }
+  50% { box-shadow: 0 0 22px 2px rgba(52, 211, 153, 0.25), inset 2px 0 0 0 rgba(52, 211, 153, 0.9); }
+}
+
+body {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}

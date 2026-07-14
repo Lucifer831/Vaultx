@@ -5,8 +5,6 @@ export const formatSize = (bytes) => {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 };
 
-// Storage-bar friendly formatting: MB while small, GB once past 1024MB,
-// with the extra decimal precision that a "X of Y used" label wants.
 export const formatStorage = (bytes) => {
   const mb = bytes / (1024 * 1024);
   if (mb < 1024) return `${mb < 10 ? mb.toFixed(2) : Math.round(mb)} MB`;

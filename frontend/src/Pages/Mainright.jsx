@@ -11,6 +11,11 @@ import {
   Star,
   RotateCcw,
   XCircle,
+  Link2,
+  LayoutGrid,
+  List,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -53,6 +58,7 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
   const [trashFiles, setTrashFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openMenuFor, setOpenMenuFor] = useState(null);
+  const [viewMode, setViewMode] = useState("list"); // "list" | "grid"
   const [renamingFile, setRenamingFile] = useState(null);
   const [renameValue, setRenameValue] = useState("");
   const menuRef = useRef(null);
@@ -180,6 +186,31 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
     }
   };
 
+  // create (or reuse) a tracked, revocable share link and copy it
+  const handleShare = async (fileName) => {
+    setOpenMenuFor(null);
+
+    try {
+      const response = await fetch(`http://localhost:8080/files/${encodeURIComponent(fileName)}/share`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast.error(result.message || "Could not create share link");
+        return;
+      }
+
+      await navigator.clipboard.writeText(result.shareUrl);
+      toast.success("Share link copied to clipboard");
+      window.dispatchEvent(new Event("share-created"));
+    } catch (error) {
+      console.log(error);
+      toast.error("Could not create share link");
+    }
+  };
+
   const startRename = (file) => {
     setOpenMenuFor(null);
     setRenamingFile(file.fileName);
@@ -272,6 +303,26 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
           {activeView === "trash" && (
             <span className="text-white/40 text-sm">Items here can be restored or deleted forever</span>
           )}
+          {(activeView === "drive" || activeView === "starred") && (
+            <div className="flex items-center gap-1 bg-[#131314] border border-white/10 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`w-8 h-8 rounded-md flex items-center justify-center transition ${
+                  viewMode === "grid" ? "bg-white/10 text-white" : "text-white/40 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`w-8 h-8 rounded-md flex items-center justify-center transition ${
+                  viewMode === "list" ? "bg-white/10 text-white" : "text-white/40 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <List size={16} />
+              </button>
+            </div>
+          )}
         </div>
 
         {activeView === "trash" ? (
@@ -334,16 +385,6 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
           </>
         ) : (
           <>
-            {/* Column headers */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_40px_40px] px-8 py-4 text-white/40 text-xs font-semibold tracking-wide">
-              <span>NAME</span>
-              <span>OWNER</span>
-              <span>LAST MODIFIED</span>
-              <span>FILE SIZE</span>
-              <span></span>
-              <span></span>
-            </div>
-
             {loading ? (
               <div className="px-8 py-10 text-white/40 text-sm">Loading files...</div>
             ) : visibleFiles.length === 0 ? (
@@ -354,21 +395,70 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
                   ? "No starred files yet. Click the star on a file to add it here."
                   : 'No files yet. Click "New File" or "Upload" to get started.'}
               </div>
-            ) : (
-              visibleFiles.map((file) => {
-                const { icon: Icon, bg, label } = getFileIcon(file.originalName);
-                const isRenaming = renamingFile === file.fileName;
+            ) : viewMode === "grid" ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4 p-8">
+                {visibleFiles.map((file) => {
+                  const { icon: Icon, bg, label } = getFileIcon(file.originalName);
+                  const isRenaming = renamingFile === file.fileName;
 
-                return (
-                  <div
-                    key={file.fileName}
-                    className="grid grid-cols-[2fr_1fr_1fr_1fr_40px_40px] items-center px-8 py-4 border-t border-white/5 hover:bg-white/5 transition relative"
-                  >
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className={`w-10 h-10 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
-                        <Icon size={20} className="text-white" />
+                  return (
+                    <div
+                      key={file.fileName}
+                      className="relative bg-[#131314] border border-white/10 rounded-xl p-4 hover:bg-white/5 transition group"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className={`w-10 h-10 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
+                          <Icon size={20} className="text-white" />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleToggleStar(file.fileName)}
+                            className="text-white/40 hover:text-yellow-400 transition"
+                            title={file.starred ? "Remove from Starred" : "Add to Starred"}
+                          >
+                            <Star size={16} className={file.starred ? "text-yellow-400" : ""} fill={file.starred ? "currentColor" : "none"} />
+                          </button>
+                          <div className="relative">
+                            <button
+                              onClick={() => setOpenMenuFor(openMenuFor === file.fileName ? null : file.fileName)}
+                              className="text-white/40 hover:text-white transition"
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+
+                            {openMenuFor === file.fileName && (
+                              <div
+                                ref={menuRef}
+                                className="absolute right-0 top-8 z-20 w-36 bg-[#242425] border border-white/10 rounded-xl shadow-lg overflow-hidden"
+                              >
+                                <button
+                                  onClick={() => startRename(file)}
+                                  className="w-full flex items-center gap-2 px-4 py-2.5 text-white text-sm hover:bg-white/10 transition"
+                                >
+                                  <Pencil size={14} />
+                                  Rename
+                                </button>
+                                <button
+                                  onClick={() => handleShare(file.fileName)}
+                                  className="w-full flex items-center gap-2 px-4 py-2.5 text-white text-sm hover:bg-white/10 transition"
+                                >
+                                  <Link2 size={14} />
+                                  Copy Link
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(file.fileName)}
+                                  className="w-full flex items-center gap-2 px-4 py-2.5 text-red-400 text-sm hover:bg-white/10 transition"
+                                >
+                                  <Trash2 size={14} />
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="min-w-0">
+
+                      <div className="mt-3 min-w-0">
                         {isRenaming ? (
                           <input
                             autoFocus
@@ -382,63 +472,146 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
                             className="bg-[#0f0f10] text-white text-sm font-semibold px-2 py-1 rounded outline-none border border-[#6245F5] w-full"
                           />
                         ) : (
-                          <div className="text-white text-sm font-semibold truncate">{file.originalName}</div>
+                          <div className="text-white text-sm font-semibold truncate" title={file.originalName}>
+                            {file.originalName}
+                          </div>
                         )}
-                        <div className="text-white/40 text-xs">{label}</div>
+                        <div className="text-white/40 text-xs mt-0.5">{label}</div>
+                        <div className="text-white/40 text-xs mt-2 flex items-center justify-between">
+                          <span>{formatDate(file.lastModified)}</span>
+                          <span>{formatSize(file.size)}</span>
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                {/* Column headers */}
+                <div className="grid grid-cols-[2fr_1fr_1fr_1fr_40px_40px] px-8 py-4 text-white/40 text-xs font-semibold tracking-wide">
+                  <span>NAME</span>
+                  <span>OWNER</span>
+                  <span>LAST MODIFIED</span>
+                  <span>FILE SIZE</span>
+                  <span></span>
+                  <span></span>
+                </div>
 
-                    <div className="flex items-center gap-2 text-white text-sm">
-                      <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] text-white">
-                        ME
-                      </div>
-                      <span>Me</span>
-                    </div>
+                {visibleFiles.map((file) => {
+                  const { icon: Icon, bg, label } = getFileIcon(file.originalName);
+                  const isRenaming = renamingFile === file.fileName;
 
-                    <div className="text-white/70 text-sm">{formatDate(file.lastModified)}</div>
-                    <div className="text-white/70 text-sm">{formatSize(file.size)}</div>
-
-                    <button
-                      onClick={() => handleToggleStar(file.fileName)}
-                      className="text-white/40 hover:text-yellow-400 transition"
-                      title={file.starred ? "Remove from Starred" : "Add to Starred"}
+                  return (
+                    <div
+                      key={file.fileName}
+                      className="grid grid-cols-[2fr_1fr_1fr_1fr_40px_40px] items-center px-8 py-4 border-t border-white/5 hover:bg-white/5 transition relative"
                     >
-                      <Star size={18} className={file.starred ? "text-yellow-400" : ""} fill={file.starred ? "currentColor" : "none"} />
-                    </button>
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className={`w-10 h-10 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
+                          <Icon size={20} className="text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          {isRenaming ? (
+                            <input
+                              autoFocus
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") confirmRename(file.fileName);
+                                if (e.key === "Escape") cancelRename();
+                              }}
+                              onBlur={() => confirmRename(file.fileName)}
+                              className="bg-[#0f0f10] text-white text-sm font-semibold px-2 py-1 rounded outline-none border border-[#6245F5] w-full"
+                            />
+                          ) : (
+                            <div className="text-white text-sm font-semibold truncate">{file.originalName}</div>
+                          )}
+                          <div className="text-white/40 text-xs">{label}</div>
+                        </div>
+                      </div>
 
-                    <div className="relative">
+                      <div className="flex items-center gap-2 text-white text-sm">
+                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[10px] text-white">
+                          ME
+                        </div>
+                        <span>Me</span>
+                      </div>
+
+                      <div className="text-white/70 text-sm">{formatDate(file.lastModified)}</div>
+                      <div className="text-white/70 text-sm">{formatSize(file.size)}</div>
+
                       <button
-                        onClick={() => setOpenMenuFor(openMenuFor === file.fileName ? null : file.fileName)}
-                        className="text-white/40 hover:text-white transition"
+                        onClick={() => handleToggleStar(file.fileName)}
+                        className="text-white/40 hover:text-yellow-400 transition"
+                        title={file.starred ? "Remove from Starred" : "Add to Starred"}
                       >
-                        <MoreVertical size={18} />
+                        <Star size={18} className={file.starred ? "text-yellow-400" : ""} fill={file.starred ? "currentColor" : "none"} />
                       </button>
 
-                      {openMenuFor === file.fileName && (
-                        <div
-                          ref={menuRef}
-                          className="absolute right-0 top-8 z-10 w-36 bg-[#242425] border border-white/10 rounded-xl shadow-lg overflow-hidden"
+                      <div className="relative">
+                        <button
+                          onClick={() => setOpenMenuFor(openMenuFor === file.fileName ? null : file.fileName)}
+                          className="text-white/40 hover:text-white transition"
                         >
-                          <button
-                            onClick={() => startRename(file)}
-                            className="w-full flex items-center gap-2 px-4 py-2.5 text-white text-sm hover:bg-white/10 transition"
+                          <MoreVertical size={18} />
+                        </button>
+
+                        {openMenuFor === file.fileName && (
+                          <div
+                            ref={menuRef}
+                            className="absolute right-0 top-8 z-10 w-36 bg-[#242425] border border-white/10 rounded-xl shadow-lg overflow-hidden"
                           >
-                            <Pencil size={14} />
-                            Rename
-                          </button>
-                          <button
-                            onClick={() => handleDelete(file.fileName)}
-                            className="w-full flex items-center gap-2 px-4 py-2.5 text-red-400 text-sm hover:bg-white/10 transition"
-                          >
-                            <Trash2 size={14} />
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                            <button
+                              onClick={() => startRename(file)}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-white text-sm hover:bg-white/10 transition"
+                            >
+                              <Pencil size={14} />
+                              Rename
+                            </button>
+                            <button
+                              onClick={() => handleShare(file.fileName)}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-white text-sm hover:bg-white/10 transition"
+                            >
+                              <Link2 size={14} />
+                              Copy Link
+                            </button>
+                            <button
+                              onClick={() => handleDelete(file.fileName)}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-red-400 text-sm hover:bg-white/10 transition"
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </>
+            )}
+
+            {!loading && visibleFiles.length > 0 && (
+              <div className="flex items-center justify-between px-8 py-4 border-t border-white/5 text-white/40 text-sm">
+                <span>
+                  Showing {visibleFiles.length} of {visibleFiles.length} files
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled
+                    className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-white/20 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    disabled
+                    className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-white/20 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
             )}
           </>
         )}

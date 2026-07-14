@@ -109,7 +109,7 @@ export default function AdminUsers() {
   );
 
   return (
-    <AdminLayout title="User Management">
+    <AdminLayout title="User Management" subtitle="View, search, and manage every VaultX account">
       <div className="flex items-center gap-4 mb-6">
         <div className="flex-1 flex items-center gap-3 bg-[#111111] border border-white/10 rounded-xl px-4 py-3">
           <Search size={18} className="text-gray-500" />
