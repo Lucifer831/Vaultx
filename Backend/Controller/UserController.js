@@ -1,22 +1,40 @@
 const user = require("../Database/Register.js");
 const bcrypt = require("bcrypt");
-const nodemailer = require("nodemailer");
 const redisClient = require("../Redish/RedishConnect.js");
 
 
 
 require("dotenv").config();
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-  connectionTimeout: 10000,
-});
+const sendOtpEmail = async ({ toEmail, fullname, otp }) => {
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "api-key": process.env.BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: { name: "VaultX", email: process.env.EMAIL_USER },
+      to: [{ email: toEmail }],
+      subject: "VaultX Email Verification",
+      htmlContent: `
+        <h2>Welcome ${fullname} 👋</h2>
+        <p>Your verification code is:</p>
+        <h1>${otp}</h1>
+        <p>This OTP will expire in <b>5 minutes</b>.</p>
+        <p>Thanks,<br/>VaultX Team ❤️</p>
+      `,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Brevo API error (${response.status}): ${errorBody}`);
+  }
+
+  return response.json();
+};
 
 const Signup = async (req, res) => {
   try {
@@ -59,24 +77,9 @@ const Signup = async (req, res) => {
     await redisClient.set(`signup:${email}`, JSON.stringify(pendingUser), { EX: 300 });
 
     try {
-      await transporter.sendMail({
-        from: `"VaultX" <${process.env.GMAIL_USER}>`,
-        to: email,
-        subject: "VaultX Email Verification",
-        html: `
-          <h2>Welcome ${fullname} 👋</h2>
-
-          <p>Your verification code is:</p>
-
-          <h1>${otp}</h1>
-
-          <p>This OTP will expire in <b>5 minutes</b>.</p>
-
-          <p>Thanks,<br/>VaultX Team ❤️</p>
-        `,
-      });
+      await sendOtpEmail({ toEmail: email, fullname, otp });
     } catch (mailError) {
-      console.log("Nodemailer error:", mailError);
+      console.log("Brevo email error:", mailError);
       await redisClient.del(`otp:${email}`, `signup:${email}`);
       return res.status(502).json({ message: "OTP email could not be sent" });
     }
