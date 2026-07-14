@@ -8,11 +8,20 @@ export default function Login() {
 
   const [email, setemail] = useState("");
   const [password, setpassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handledata = async (e) => {
     e.preventDefault();
 
     const data = { email, password };
+    setIsLoading(true);
+
+    // Render free-tier servers sleep after inactivity and can take
+    // 30-50s to wake up on the first request. Let the user know
+    // instead of leaving them staring at a stuck button.
+    const wakeupTimer = setTimeout(() => {
+      toast.info("Server is waking up, this can take up to 40 seconds ⏳");
+    }, 4000);
 
     try {
       const response = await fetch(`${API_URL}/login`, {
@@ -39,7 +48,10 @@ export default function Login() {
       }
     } catch (error) {
       console.log(error);
-      toast.error("Something went wrong");
+      toast.error("Something went wrong. Please check your connection and try again.");
+    } finally {
+      clearTimeout(wakeupTimer);
+      setIsLoading(false);
     }
   };
 
@@ -57,7 +69,8 @@ export default function Login() {
             onChange={(e) => setemail(e.target.value)}
             type="email"
             placeholder="Enter your email"
-            className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500"
+            disabled={isLoading}
+            className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500 disabled:opacity-50"
           />
         </div>
 
@@ -72,7 +85,8 @@ export default function Login() {
             onChange={(e) => setpassword(e.target.value)}
             type="password"
             placeholder="Enter your password"
-            className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500"
+            disabled={isLoading}
+            className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500 disabled:opacity-50"
           />
         </div>
 
@@ -87,9 +101,17 @@ export default function Login() {
 
         <button
           type="submit"
-          className="w-full bg-indigo-600 hover:bg-indigo-700 transition py-3 rounded-xl text-white font-semibold"
+          disabled={isLoading}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 transition py-3 rounded-xl text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          Login
+          {isLoading ? (
+            <>
+              <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+              Please wait...
+            </>
+          ) : (
+            "Login"
+          )}
         </button>
 
         <Link

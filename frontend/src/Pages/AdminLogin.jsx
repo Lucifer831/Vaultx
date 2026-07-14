@@ -17,6 +17,13 @@ export default function AdminLogin() {
     e.preventDefault();
     setLoading(true);
 
+    // Render free-tier servers sleep after inactivity and can take
+    // 30-50s to wake up on the first request. Let the admin know
+    // instead of leaving them staring at a stuck button.
+    const wakeupTimer = setTimeout(() => {
+      toast.info("Server is waking up, this can take up to 40 seconds ⏳");
+    }, 4000);
+
     try {
       const response = await fetch(`${API_URL}/admin/login`, {
         method: "POST",
@@ -38,6 +45,7 @@ export default function AdminLogin() {
       console.log(error);
       toast.error("Could not connect to the server");
     } finally {
+      clearTimeout(wakeupTimer);
       setLoading(false);
     }
   };
@@ -136,7 +144,8 @@ export default function AdminLogin() {
                       onChange={(e) => setter(e.target.value)}
                       type={type}
                       placeholder={placeholder}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-[#6245F5] transition"
+                      disabled={loading}
+                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-[#6245F5] transition disabled:opacity-50"
                     />
                   </div>
                 </div>

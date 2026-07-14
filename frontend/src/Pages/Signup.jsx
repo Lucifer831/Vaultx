@@ -1,6 +1,7 @@
 import { useForm} from "react-hook-form"
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { useState } from "react";
 import { API_URL } from "../utils/api";
 
 
@@ -8,6 +9,7 @@ import { API_URL } from "../utils/api";
 export default function Signup() {
 
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
     const {
         register,
@@ -15,6 +17,13 @@ export default function Signup() {
       } = useForm()
 
       const onsubmit = async (data) => {
+        setIsLoading(true);
+
+    
+        const wakeupTimer = setTimeout(() => {
+          toast.info("Server is waking up, this can take up to 40 seconds ⏳");
+        }, 4000);
+
         try {
           const response = await fetch(`${API_URL}/signup`, {
             method: "POST",
@@ -35,7 +44,10 @@ export default function Signup() {
           toast.success("OTP sent to your email ✅");
           navigate("/verifyemail", { state: { email: result.email } });
         } catch {
-          toast.error("Backend is not running on port 8080");
+          toast.error("Something went wrong. Please check your connection and try again.");
+        } finally {
+          clearTimeout(wakeupTimer);
+          setIsLoading(false);
         }
       };
     
@@ -54,7 +66,8 @@ export default function Signup() {
           {...register("fullname")}
           type="text"
           placeholder="Enter your full name"
-          className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500 transition-all duration-300"
+          disabled={isLoading}
+          className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500 transition-all duration-300 disabled:opacity-50"
         />
       </div>
 
@@ -68,7 +81,8 @@ export default function Signup() {
           {...register("email")}
           type="email"
           placeholder="Enter your email"
-          className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500 transition-all duration-300"
+          disabled={isLoading}
+          className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500 transition-all duration-300 disabled:opacity-50"
         />
       </div>
 
@@ -82,15 +96,26 @@ export default function Signup() {
           {...register("password")}
           type="password"
           placeholder="Create a password"
-          className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500 transition-all duration-300"
+          disabled={isLoading}
+          className="w-full px-4 py-3 rounded-xl bg-[#1d1d1d] border border-gray-700 text-white placeholder-gray-500 outline-none focus:border-indigo-500 transition-all duration-300 disabled:opacity-50"
         />
       </div>
 
 
      
 
-      <button className="w-full bg-indigo-600 hover:bg-indigo-700 transition-all duration-300 py-3 rounded-xl text-white font-semibold">
-        Create Account
+      <button
+        disabled={isLoading}
+        className="w-full bg-indigo-600 hover:bg-indigo-700 transition-all duration-300 py-3 rounded-xl text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {isLoading ? (
+          <>
+            <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+            Please wait...
+          </>
+        ) : (
+          "Create Account"
+        )}
       </button>
 
     </div>
