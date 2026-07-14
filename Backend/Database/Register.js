@@ -29,6 +29,36 @@ const Registerdata = new mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+
+    deletionRequested: {
+      type: Boolean,
+      default: false,
+    },
+
+    deletionRequestedAt: {
+      type: Date,
+      default: null,
+    },
+
+    bucketRequested: {
+      type: Boolean,
+      default: false,
+    },
+
+    bucketRequestedAt: {
+      type: Date,
+      default: null,
+    },
+
+    bucketRequestedSize: {
+      type: String,
+      default: null,
+    },
+
+    extraBuckets: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

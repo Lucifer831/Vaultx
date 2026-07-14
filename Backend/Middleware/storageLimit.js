@@ -1,12 +1,9 @@
 const { getUserUsage, STORAGE_LIMIT_BYTES } = require("../Utils/storage.js");
 
-// Runs BEFORE multer touches the upload, so an over-limit upload is
-// rejected immediately instead of writing the file to disk and then
-// deleting it.
-const checkStorageLimit = (req, res, next) => {
+const checkStorageLimit = async (req, res, next) => {
   try {
     const incomingSize = Number(req.headers["content-length"]) || 0;
-    const currentUsage = getUserUsage(req.user.id);
+    const currentUsage = await getUserUsage(req.user.id);
 
     if (currentUsage + incomingSize > STORAGE_LIMIT_BYTES) {
       const remaining = Math.max(STORAGE_LIMIT_BYTES - currentUsage, 0);
@@ -22,6 +19,7 @@ const checkStorageLimit = (req, res, next) => {
 
     next();
   } catch (err) {
+    console.log(err);
     return res.status(500).json({ message: "Unable to verify storage limit" });
   }
 };

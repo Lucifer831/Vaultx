@@ -1,53 +1,42 @@
-const fs = require("fs");
-const path = require("path");
+const { supabase, BUCKET } = require("./supabase.js");
 
-const uploadsDir = path.join(__dirname, "..", "uploads");
-const trashDir = path.join(__dirname, "..", "trash");
-
-// 1GB total storage limit per user (uploads + trash, since trashed files
-// still occupy disk space until they're permanently deleted).
 const STORAGE_LIMIT_BYTES = 1 * 1024 * 1024 * 1024;
 
 const IGNORED_ENTRIES = [".gitkeep", ".DS_Store"];
 
-const getDirSize = (dirPath) => {
-  if (!fs.existsSync(dirPath)) return 0;
+// Path helpers — files now live inside the Supabase "vault-x" bucket instead of local disk.
+// Active files:  {userId}/{fileName}
+// Trashed files: {userId}/trash/{fileName}
+const getUserUploadsPrefix = (userId) => `${userId}`;
+const getUserTrashPrefix = (userId) => `${userId}/trash`;
 
-  return fs.readdirSync(dirPath).reduce((total, entry) => {
-    if (IGNORED_ENTRIES.includes(entry)) return total;
+// Lists files (not sub-folders) directly under a prefix.
+const listFiles = async (prefix) => {
+  const { data, error } = await supabase.storage.from(BUCKET).list(prefix, {
+    limit: 1000,
+    sortBy: { column: "created_at", order: "desc" },
+  });
 
-    const entryPath = path.join(dirPath, entry);
-    try {
-      const stats = fs.statSync(entryPath);
-      return stats.isFile() ? total + stats.size : total;
-    } catch (err) {
-      return total;
-    }
-  }, 0);
+  if (error) throw error;
+
+  return (data || []).filter(
+    (entry) => entry.id !== null && !IGNORED_ENTRIES.includes(entry.name)
+  );
 };
 
-// Returns each user's private uploads folder, creating it if needed.
-const getUserUploadsDir = (userId) => {
-  const dir = path.join(uploadsDir, String(userId));
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
+const getPrefixSize = async (prefix) => {
+  const files = await listFiles(prefix);
+  return files.reduce((total, f) => total + (f.metadata?.size || 0), 0);
 };
 
-// Returns each user's private trash folder, creating it if needed.
-const getUserTrashDir = (userId) => {
-  const dir = path.join(trashDir, String(userId));
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
+const getUserUsage = async (userId) => {
+  const uploadsSize = await getPrefixSize(getUserUploadsPrefix(userId));
+  const trashSize = await getPrefixSize(getUserTrashPrefix(userId));
+  return uploadsSize + trashSize;
 };
 
-const getUserUsage = (userId) => {
-  const userUploadsDir = path.join(uploadsDir, String(userId));
-  const userTrashDir = path.join(trashDir, String(userId));
-  return getDirSize(userUploadsDir) + getDirSize(userTrashDir);
-};
-
-const getUserStorageInfo = (userId) => {
-  const used = getUserUsage(userId);
+const getUserStorageInfo = async (userId) => {
+  const used = await getUserUsage(userId);
   const limit = STORAGE_LIMIT_BYTES;
   const remaining = Math.max(limit - used, 0);
   const percentUsed = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
@@ -55,13 +44,29 @@ const getUserStorageInfo = (userId) => {
   return { used, limit, remaining, percentUsed };
 };
 
+// Permanently removes every file a user has in Supabase Storage — both
+// their active uploads and anything sitting in their trash. Used when an
+// account is deleted (admin action or approved self-deletion request).
+const deleteUserFiles = async (userId) => {
+  const prefixes = [getUserUploadsPrefix(userId), getUserTrashPrefix(userId)];
+
+  for (const prefix of prefixes) {
+    const files = await listFiles(prefix);
+    if (!files.length) continue;
+
+    const paths = files.map((f) => `${prefix}/${f.name}`);
+    const { error } = await supabase.storage.from(BUCKET).remove(paths);
+    if (error) throw error;
+  }
+};
+
 module.exports = {
-  uploadsDir,
-  trashDir,
+  BUCKET,
   STORAGE_LIMIT_BYTES,
-  getDirSize,
-  getUserUploadsDir,
-  getUserTrashDir,
+  getUserUploadsPrefix,
+  getUserTrashPrefix,
+  listFiles,
   getUserUsage,
   getUserStorageInfo,
+  deleteUserFiles,
 };

@@ -17,7 +17,13 @@ const checkStorageLimit = require("../Middleware/storageLimit.js");
 
 const home = require('../Controller/HomeController.js');
 
-const { Signup, verifyemail } = require("../Controller/UserController.js");
+const { Signup, verifyemail, requestAccountDeletion, requestBucket } = require("../Controller/UserController.js");
+const {
+  createShareLink,
+  getMyShares,
+  revokeShare,
+} = require("../Controller/ShareController.js");
+const { getNotifications, markAllRead } = require("../Controller/NotificationController.js");
 const login = require("../Controller/Logincontroller")
 
 console.log(Signup)
@@ -36,5 +42,12 @@ Router.route("/files/:fileName/star").patch(jwtauth, toggleStar);
 Router.route("/trash").get(jwtauth, getTrashFiles);
 Router.route("/trash/:fileName/restore").patch(jwtauth, restoreFile);
 Router.route("/trash/:fileName").delete(jwtauth, permanentlyDeleteFile);
+Router.route("/account/delete-request").post(jwtauth, requestAccountDeletion);
+Router.route("/account/bucket-request").post(jwtauth, requestBucket);
+Router.route("/files/:fileName/share").post(jwtauth, createShareLink);
+Router.route("/shares").get(jwtauth, getMyShares);
+Router.route("/shares/:id/revoke").patch(jwtauth, revokeShare);
+Router.route("/notifications").get(jwtauth, getNotifications);
+Router.route("/notifications/read").patch(jwtauth, markAllRead);
 
 module.exports = Router;

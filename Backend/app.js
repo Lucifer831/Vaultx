@@ -1,10 +1,12 @@
+require("dotenv").config();
+
 const express = require("express");
 const app = express();
 const Routes = require("./Route/user_routes.js")
 const AdminRoutes = require("./Route/admin_routes.js")
+const { openSharedFile } = require("./Controller/ShareController.js")
 const cors = require("cors")
 
-require("dotenv").config();
 require('./Database/UserData.js')
 require('./Redish/RedishConnect.js')
 require('./Middleware/jwtAuth.js')
@@ -13,7 +15,7 @@ app.use(cors())
 
 app.use(express.json());
 
-app.use('/uploads', express.static('uploads'));
+app.get('/s/:token', openSharedFile);
 
 app.use('/',Routes)
 app.use('/admin', AdminRoutes)

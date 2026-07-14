@@ -36,7 +36,6 @@ const Signup = async (req, res) => {
       });
     }
 
-    // Remove accounts created by the older flow before their email was verified.
     if (emailcheck) {
       await user.deleteOne({ _id: emailcheck._id });
     }
@@ -142,7 +141,83 @@ const verifyemail = async (req, res) => {
     }
   };
 
+const requestAccountDeletion = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const existingUser = await user.findById(req.user.id);
+
+    if (!existingUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (existingUser.email.toLowerCase() !== email) {
+      return res.status(401).json({ message: "Email does not match your account" });
+    }
+
+    const validPassword = await bcrypt.compare(password, existingUser.password);
+    if (!validPassword) {
+      return res.status(401).json({ message: "Incorrect password" });
+    }
+
+    if (existingUser.deletionRequested) {
+      return res.status(409).json({
+        message: "You've already requested deletion. Waiting for admin approval.",
+      });
+    }
+
+    existingUser.deletionRequested = true;
+    existingUser.deletionRequestedAt = new Date();
+    await existingUser.save();
+
+    return res.status(200).json({
+      message:
+        "One step complete! Your account will be deleted once the admin accepts the request.",
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Unable to submit deletion request" });
+  }
+};
+
+const requestBucket = async (req, res) => {
+  try {
+    const existingUser = await user.findById(req.user.id);
+
+    if (!existingUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (existingUser.bucketRequested) {
+      return res.status(409).json({
+        message: "Request already sent. Waiting for admin approval.",
+      });
+    }
+
+    const { size } = req.body;
+
+    existingUser.bucketRequested = true;
+    existingUser.bucketRequestedAt = new Date();
+    existingUser.bucketRequestedSize = size || null;
+    await existingUser.save();
+
+    return res.status(200).json({
+      message: "Request has been sent to admin!",
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Unable to submit bucket request" });
+  }
+};
+
 module.exports = {
   Signup,
-  verifyemail
+  verifyemail,
+  requestAccountDeletion,
+  requestBucket,
 };

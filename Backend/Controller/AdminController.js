@@ -1,8 +1,8 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const fs = require("fs");
 const user = require("../Database/Register.js");
-const { getUserUsage, getUserUploadsDir, getUserTrashDir } = require("../Utils/storage.js");
+const { getUserUsage, deleteUserFiles } = require("../Utils/storage.js");
+const { createNotification } = require("../Utils/notify.js");
 require("dotenv").config();
 
 
@@ -36,17 +36,16 @@ const adminLogin = (req, res) => {
   }
 };
 
-// --- Dashboard stats: pending requests / total users / storage used ---
 const getStats = async (req, res) => {
   try {
     const totalUsers = await user.countDocuments({ approvalStatus: "approved" });
     const pendingRequests = await user.countDocuments({ approvalStatus: "pending", isVerified: true });
 
     const approvedUsers = await user.find({ approvalStatus: "approved" }).select("_id");
-    const totalStorageUsed = approvedUsers.reduce(
-      (sum, u) => sum + getUserUsage(u._id.toString()),
-      0
+    const usagePerUser = await Promise.all(
+      approvedUsers.map((u) => getUserUsage(u._id.toString()))
     );
+    const totalStorageUsed = usagePerUser.reduce((sum, used) => sum + used, 0);
 
     const STORAGE_LIMIT_BYTES = 1 * 1024 * 1024 * 1024;
     const totalStorageCapacity = approvedUsers.length * STORAGE_LIMIT_BYTES;
@@ -63,20 +62,21 @@ const getStats = async (req, res) => {
   }
 };
 
-// --- All users with their storage usage ---
 const getUsers = async (req, res) => {
   try {
     const users = await user.find({}).select("-password").sort({ createdAt: -1 });
 
-    const usersWithUsage = users.map((u) => ({
-      id: u._id,
-      fullname: u.fullname,
-      email: u.email,
-      isVerified: u.isVerified,
-      approvalStatus: u.approvalStatus,
-      createdAt: u.createdAt,
-      storageUsed: getUserUsage(u._id.toString()),
-    }));
+    const usersWithUsage = await Promise.all(
+      users.map(async (u) => ({
+        id: u._id,
+        fullname: u.fullname,
+        email: u.email,
+        isVerified: u.isVerified,
+        approvalStatus: u.approvalStatus,
+        createdAt: u.createdAt,
+        storageUsed: await getUserUsage(u._id.toString()),
+      }))
+    );
 
     return res.status(200).json({ users: usersWithUsage });
   } catch (err) {
@@ -112,6 +112,12 @@ const approveUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    await createNotification(
+      updated._id,
+      "Your account has been approved by the admin! 🎉 You can now log in.",
+      "other"
+    );
+
     return res.status(200).json({ message: "User approved", user: updated });
   } catch (err) {
     console.log(err);
@@ -132,6 +138,12 @@ const rejectUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    await createNotification(
+      updated._id,
+      "Your signup request was declined by the admin.",
+      "other"
+    );
+
     return res.status(200).json({ message: "User rejected", user: updated });
   } catch (err) {
     console.log(err);
@@ -151,12 +163,7 @@ const deleteUser = async (req, res) => {
 
     await user.deleteOne({ _id: id });
 
-    // Clean up their files from disk too, so deleted accounts don't leave
-    // orphaned data behind.
-    const uploadsDir = getUserUploadsDir(id);
-    const trashDir = getUserTrashDir(id);
-    fs.rmSync(uploadsDir, { recursive: true, force: true });
-    fs.rmSync(trashDir, { recursive: true, force: true });
+    await deleteUserFiles(id);
 
     return res.status(200).json({ message: "User deleted" });
   } catch (err) {
@@ -165,6 +172,66 @@ const deleteUser = async (req, res) => {
   }
 };
 
+
+const getDeletionRequests = async (req, res) => {
+  try {
+    const requests = await user
+      .find({ deletionRequested: true })
+      .select("-password")
+      .sort({ deletionRequestedAt: -1 });
+
+    return res.status(200).json({ requests });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Unable to load deletion requests" });
+  }
+};
+
+const approveDeletion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await user.findById(id);
+
+    if (!existing) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await user.deleteOne({ _id: id });
+
+    await deleteUserFiles(id);
+
+    return res.status(200).json({ message: "Account deleted" });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Unable to delete account" });
+  }
+};
+
+const rejectDeletion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await user.findByIdAndUpdate(
+      id,
+      { deletionRequested: false, deletionRequestedAt: null },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await createNotification(
+      updated._id,
+      "Your account deletion request was declined by the admin. Your account is safe.",
+      "other"
+    );
+
+    return res.status(200).json({ message: "Deletion request rejected", user: updated });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Unable to reject deletion request" });
+  }
+};
 
 const addUser = async (req, res) => {
   try {
@@ -200,6 +267,76 @@ const addUser = async (req, res) => {
   }
 };
 
+const getBucketRequests = async (req, res) => {
+  try {
+    const requests = await user
+      .find({ bucketRequested: true })
+      .select("-password")
+      .sort({ bucketRequestedAt: -1 });
+
+    return res.status(200).json({ requests });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Unable to load bucket requests" });
+  }
+};
+
+const approveBucketRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await user.findById(id);
+
+    if (!existing) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    existing.bucketRequested = false;
+    existing.bucketRequestedAt = null;
+    existing.extraBuckets = (existing.extraBuckets || 0) + 1;
+    await existing.save();
+
+    await createNotification(
+      existing._id,
+      `Your new bucket request (${existing.bucketRequestedSize || "extra storage"}) was approved! 🎉`,
+      "other"
+    );
+
+    existing.bucketRequestedSize = null;
+    await existing.save();
+
+    return res.status(200).json({ message: "Bucket request approved", user: existing });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Unable to approve bucket request" });
+  }
+};
+
+const rejectBucketRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await user.findByIdAndUpdate(
+      id,
+      { bucketRequested: false, bucketRequestedAt: null, bucketRequestedSize: null },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await createNotification(
+      updated._id,
+      "Your new bucket request was declined by the admin.",
+      "other"
+    );
+
+    return res.status(200).json({ message: "Bucket request rejected", user: updated });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: "Unable to reject bucket request" });
+  }
+};
+
 module.exports = {
   adminLogin,
   getStats,
@@ -209,4 +346,10 @@ module.exports = {
   rejectUser,
   deleteUser,
   addUser,
+  getDeletionRequests,
+  approveDeletion,
+  rejectDeletion,
+  getBucketRequests,
+  approveBucketRequest,
+  rejectBucketRequest,
 };

@@ -1,14 +1,20 @@
 const fs = require("fs");
 const path = require("path");
+const { supabase, BUCKET } = require("../Utils/supabase.js");
 const {
-  getUserUploadsDir,
-  getUserTrashDir,
+  getUserUploadsPrefix,
+  getUserTrashPrefix,
+  listFiles,
   getUserStorageInfo,
 } = require("../Utils/storage.js");
+const Share = require("../Database/Share.js");
+const { createNotification } = require("../Utils/notify.js");
 
 const starredFilePath = path.join(__dirname, "..", "starred.json");
 const trashMetaPath = path.join(__dirname, "..", "trash-meta.json");
 
+const isNotFoundError = (error) =>
+  !!error && typeof error.message === "string" && error.message.toLowerCase().includes("not found");
 
 const readStarred = () => {
   try {
@@ -23,7 +29,6 @@ const readStarred = () => {
 const writeStarred = (list) => {
   fs.writeFileSync(starredFilePath, JSON.stringify(list, null, 2));
 };
-
 
 const readTrashMeta = () => {
   try {
@@ -44,105 +49,94 @@ const getOriginalName = (fileName) => {
   return dashIndex !== -1 ? fileName.slice(dashIndex + 1) : fileName;
 };
 
-const getFiles = (req, res) => {
-  const uploadsDir = getUserUploadsDir(req.user.id);
-
-  fs.readdir(uploadsDir, (err, files) => {
-    if (err) {
-      return res.status(500).json({ message: "Unable to read uploads folder" });
-    }
-
+const getFiles = async (req, res) => {
+  try {
+    const prefix = getUserUploadsPrefix(req.user.id);
+    const files = await listFiles(prefix);
     const starredList = readStarred();
 
     const fileList = files
-      .filter((file) => file !== ".gitkeep" && file !== ".DS_Store")
-      .map((file) => {
-        const filePath = path.join(uploadsDir, file);
-        const stats = fs.statSync(filePath);
-
-        return {
-          fileName: file,
-          originalName: getOriginalName(file),
-          size: stats.size,
-          lastModified: stats.mtime,
-          starred: starredList.includes(file),
-        };
-      })
+      .map((f) => ({
+        fileName: f.name,
+        originalName: getOriginalName(f.name),
+        size: f.metadata?.size || 0,
+        lastModified: f.updated_at || f.created_at || new Date().toISOString(),
+        starred: starredList.includes(f.name),
+      }))
       .sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified));
 
     res.status(200).json({ files: fileList });
-  });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Unable to read uploads folder" });
+  }
 };
 
-// Soft delete: move the file from uploads/ into trash/
-const deleteFile = (req, res) => {
-  const uploadsDir = getUserUploadsDir(req.user.id);
-  const trashDir = getUserTrashDir(req.user.id);
+const deleteFile = async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    const safeName = path.basename(fileName);
 
-  const { fileName } = req.params;
-  const safeName = path.basename(fileName);
-  const oldPath = path.join(uploadsDir, safeName);
-  const newPath = path.join(trashDir, safeName);
+    const oldPath = `${getUserUploadsPrefix(req.user.id)}/${safeName}`;
+    const newPath = `${getUserTrashPrefix(req.user.id)}/${safeName}`;
 
-  if (!oldPath.startsWith(uploadsDir) || !newPath.startsWith(trashDir)) {
-    return res.status(400).json({ message: "Invalid file name" });
-  }
+    const { error } = await supabase.storage.from(BUCKET).move(oldPath, newPath);
 
-  fs.rename(oldPath, newPath, (err) => {
-    if (err) {
-      if (err.code === "ENOENT") {
+    if (error) {
+      if (isNotFoundError(error)) {
         return res.status(404).json({ message: "File not found" });
       }
+      console.log(error);
       return res.status(500).json({ message: "Unable to delete file" });
     }
 
-    // remove from starred (a trashed file shouldn't show up as starred)
     const starredList = readStarred().filter((name) => name !== safeName);
     writeStarred(starredList);
 
-    // record when it was trashed
     const meta = readTrashMeta();
     meta[safeName] = new Date().toISOString();
     writeTrashMeta(meta);
 
+    Share.updateMany({ user: req.user.id, fileName: safeName }, { active: false }).catch((err2) =>
+      console.log(err2)
+    );
+
+    createNotification(req.user.id, `"${getOriginalName(safeName)}" was moved to trash`, "delete");
+
     res.status(200).json({ message: "File moved to trash" });
-  });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Unable to delete file" });
+  }
 };
 
-const renameFile = (req, res) => {
-  const uploadsDir = getUserUploadsDir(req.user.id);
+const renameFile = async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    const { newName } = req.body;
 
-  const { fileName } = req.params;
-  const { newName } = req.body;
+    if (!newName || !newName.trim()) {
+      return res.status(400).json({ message: "New name is required" });
+    }
 
-  if (!newName || !newName.trim()) {
-    return res.status(400).json({ message: "New name is required" });
-  }
+    const safeOldName = path.basename(fileName);
+    const dashIndex = safeOldName.indexOf("-");
+    const timestamp = dashIndex !== -1 ? safeOldName.slice(0, dashIndex) : Date.now().toString();
 
-  const safeOldName = path.basename(fileName);
-  const oldPath = path.join(uploadsDir, safeOldName);
+    const safeNewOriginalName = path.basename(newName.trim());
+    const newFileName = `${timestamp}-${safeNewOriginalName}`;
 
-  if (!oldPath.startsWith(uploadsDir)) {
-    return res.status(400).json({ message: "Invalid file name" });
-  }
+    const prefix = getUserUploadsPrefix(req.user.id);
+    const oldPath = `${prefix}/${safeOldName}`;
+    const newPath = `${prefix}/${newFileName}`;
 
-  if (!fs.existsSync(oldPath)) {
-    return res.status(404).json({ message: "File not found" });
-  }
+    const { error } = await supabase.storage.from(BUCKET).move(oldPath, newPath);
 
-  const dashIndex = safeOldName.indexOf("-");
-  const timestamp = dashIndex !== -1 ? safeOldName.slice(0, dashIndex) : Date.now().toString();
-
-  const safeNewOriginalName = path.basename(newName.trim());
-  const newFileName = `${timestamp}-${safeNewOriginalName}`;
-  const newPath = path.join(uploadsDir, newFileName);
-
-  if (!newPath.startsWith(uploadsDir)) {
-    return res.status(400).json({ message: "Invalid new name" });
-  }
-
-  fs.rename(oldPath, newPath, (err) => {
-    if (err) {
+    if (error) {
+      if (isNotFoundError(error)) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      console.log(error);
       return res.status(500).json({ message: "Unable to rename file" });
     }
 
@@ -153,24 +147,25 @@ const renameFile = (req, res) => {
       writeStarred(starredList);
     }
 
+    Share.updateMany(
+      { user: req.user.id, fileName: safeOldName },
+      { fileName: newFileName, originalName: safeNewOriginalName }
+    ).catch((err2) => console.log(err2));
+
     res.status(200).json({
       message: "File renamed successfully",
       fileName: newFileName,
       originalName: safeNewOriginalName,
     });
-  });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Unable to rename file" });
+  }
 };
 
-const toggleStar = (req, res) => {
-  const uploadsDir = getUserUploadsDir(req.user.id);
-
+const toggleStar = async (req, res) => {
   const { fileName } = req.params;
   const safeName = path.basename(fileName);
-  const filePath = path.join(uploadsDir, safeName);
-
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ message: "File not found" });
-  }
 
   const starredList = readStarred();
   const idx = starredList.indexOf(safeName);
@@ -189,55 +184,43 @@ const toggleStar = (req, res) => {
   res.status(200).json({ message: "Updated", starred });
 };
 
-
-
-const getTrashFiles = (req, res) => {
-  const trashDir = getUserTrashDir(req.user.id);
-
-  fs.readdir(trashDir, (err, files) => {
-    if (err) {
-      return res.status(500).json({ message: "Unable to read trash folder" });
-    }
-
+const getTrashFiles = async (req, res) => {
+  try {
+    const prefix = getUserTrashPrefix(req.user.id);
+    const files = await listFiles(prefix);
     const meta = readTrashMeta();
 
     const fileList = files
-      .filter((file) => file !== ".gitkeep" && file !== ".DS_Store")
-      .map((file) => {
-        const filePath = path.join(trashDir, file);
-        const stats = fs.statSync(filePath);
-
-        return {
-          fileName: file,
-          originalName: getOriginalName(file),
-          size: stats.size,
-          deletedAt: meta[file] || stats.mtime,
-        };
-      })
+      .map((f) => ({
+        fileName: f.name,
+        originalName: getOriginalName(f.name),
+        size: f.metadata?.size || 0,
+        deletedAt: meta[f.name] || f.updated_at || f.created_at || new Date().toISOString(),
+      }))
       .sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
 
     res.status(200).json({ files: fileList });
-  });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Unable to read trash folder" });
+  }
 };
 
-const restoreFile = (req, res) => {
-  const uploadsDir = getUserUploadsDir(req.user.id);
-  const trashDir = getUserTrashDir(req.user.id);
+const restoreFile = async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    const safeName = path.basename(fileName);
 
-  const { fileName } = req.params;
-  const safeName = path.basename(fileName);
-  const oldPath = path.join(trashDir, safeName);
-  const newPath = path.join(uploadsDir, safeName);
+    const oldPath = `${getUserTrashPrefix(req.user.id)}/${safeName}`;
+    const newPath = `${getUserUploadsPrefix(req.user.id)}/${safeName}`;
 
-  if (!oldPath.startsWith(trashDir) || !newPath.startsWith(uploadsDir)) {
-    return res.status(400).json({ message: "Invalid file name" });
-  }
+    const { error } = await supabase.storage.from(BUCKET).move(oldPath, newPath);
 
-  fs.rename(oldPath, newPath, (err) => {
-    if (err) {
-      if (err.code === "ENOENT") {
+    if (error) {
+      if (isNotFoundError(error)) {
         return res.status(404).json({ message: "File not found in trash" });
       }
+      console.log(error);
       return res.status(500).json({ message: "Unable to restore file" });
     }
 
@@ -245,26 +228,25 @@ const restoreFile = (req, res) => {
     delete meta[safeName];
     writeTrashMeta(meta);
 
+    createNotification(req.user.id, `"${getOriginalName(safeName)}" was restored`, "restore");
+
     res.status(200).json({ message: "File restored" });
-  });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Unable to restore file" });
+  }
 };
 
-const permanentlyDeleteFile = (req, res) => {
-  const trashDir = getUserTrashDir(req.user.id);
+const permanentlyDeleteFile = async (req, res) => {
+  try {
+    const { fileName } = req.params;
+    const safeName = path.basename(fileName);
+    const filePath = `${getUserTrashPrefix(req.user.id)}/${safeName}`;
 
-  const { fileName } = req.params;
-  const safeName = path.basename(fileName);
-  const filePath = path.join(trashDir, safeName);
+    const { error } = await supabase.storage.from(BUCKET).remove([filePath]);
 
-  if (!filePath.startsWith(trashDir)) {
-    return res.status(400).json({ message: "Invalid file name" });
-  }
-
-  fs.unlink(filePath, (err) => {
-    if (err) {
-      if (err.code === "ENOENT") {
-        return res.status(404).json({ message: "File not found in trash" });
-      }
+    if (error) {
+      console.log(error);
       return res.status(500).json({ message: "Unable to delete file" });
     }
 
@@ -272,14 +254,29 @@ const permanentlyDeleteFile = (req, res) => {
     delete meta[safeName];
     writeTrashMeta(meta);
 
+    Share.deleteMany({ user: req.user.id, fileName: safeName }).catch((err2) => console.log(err2));
+
+    createNotification(
+      req.user.id,
+      `"${getOriginalName(safeName)}" was permanently deleted`,
+      "permanent-delete"
+    );
+
     res.status(200).json({ message: "File permanently deleted" });
-  });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Unable to delete file" });
+  }
 };
 
-
-const getStorageInfo = (req, res) => {
-  const info = getUserStorageInfo(req.user.id);
-  res.status(200).json(info);
+const getStorageInfo = async (req, res) => {
+  try {
+    const info = await getUserStorageInfo(req.user.id);
+    res.status(200).json(info);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Unable to get storage info" });
+  }
 };
 
 module.exports = {
