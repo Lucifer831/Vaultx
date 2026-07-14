@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FolderPlus, HardDrive, Database, FileText, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { formatStorage } from "../utils/format";
+import { API_URL } from "../utils/api";
 
 export default function DashboardStats() {
   const navigate = useNavigate();
@@ -18,13 +19,13 @@ export default function DashboardStats() {
   const fetchStats = useCallback(async () => {
     try {
       const [storageRes, filesRes, trashRes] = await Promise.all([
-        fetch("http://localhost:8080/storage", {
+        fetch(`${API_URL}/storage`, {
           headers: { Authorization: `Bearer ${token()}` },
         }),
-        fetch("http://localhost:8080/files", {
+        fetch(`${API_URL}/files`, {
           headers: { Authorization: `Bearer ${token()}` },
         }),
-        fetch("http://localhost:8080/trash", {
+        fetch(`${API_URL}/trash`, {
           headers: { Authorization: `Bearer ${token()}` },
         }),
       ]);

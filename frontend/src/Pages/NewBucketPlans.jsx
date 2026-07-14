@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Database, Check } from "lucide-react";
 import { toast } from "react-toastify";
+import { API_URL } from "../utils/api";
 
 const plans = [
   {
@@ -41,7 +42,7 @@ export default function NewBucketPlans() {
     setRequesting(planId);
 
     try {
-      const response = await fetch("http://localhost:8080/account/bucket-request", {
+      const response = await fetch(`${API_URL}/account/bucket-request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

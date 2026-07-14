@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { toast } from "react-toastify";
+import { API_URL } from "../utils/api";
 
 export default function DeleteAccountModal({ onClose }) {
   const [email, setEmail] = useState("");
@@ -19,7 +20,7 @@ export default function DeleteAccountModal({ onClose }) {
     setSubmitting(true);
 
     try {
-      const response = await fetch("http://localhost:8080/account/delete-request", {
+      const response = await fetch(`${API_URL}/account/delete-request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

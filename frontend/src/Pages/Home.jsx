@@ -5,6 +5,7 @@ import Mainleft from "./Mainleft";
 import Mainright from "./Mainright";
 import DashboardStats from "./DashboardStats";
 import ActiveLinksList from "./ActiveLinksList";
+import { API_URL } from "../utils/api";
 
 
 
@@ -19,7 +20,7 @@ export default function Home() {
       const token = localStorage.getItem("token");
 
       try {
-        const response = await fetch("http://localhost:8080/home", {
+        const response = await fetch(`${API_URL}/home`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,

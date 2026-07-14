@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import AdminLayout from "../Component/AdminLayout";
+import { API_URL } from "../utils/api";
 
 const authHeaders = () => ({
   "Content-Type": "application/json",
@@ -28,9 +29,9 @@ export default function AdminRequests() {
   const fetchAll = useCallback(async () => {
     try {
       const [pendingRes, deletionRes, bucketRes] = await Promise.all([
-        fetch("http://localhost:8080/admin/pending", { headers: authHeaders() }),
-        fetch("http://localhost:8080/admin/deletion-requests", { headers: authHeaders() }),
-        fetch("http://localhost:8080/admin/bucket-requests", { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/pending`, { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/deletion-requests`, { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/bucket-requests`, { headers: authHeaders() }),
       ]);
 
       if (pendingRes.status === 401 || deletionRes.status === 401 || bucketRes.status === 401) {
@@ -66,7 +67,7 @@ export default function AdminRequests() {
   const handleDecision = async (id, action) => {
     setActingId(id);
     try {
-      const response = await fetch(`http://localhost:8080/admin/${action}/${id}`, {
+      const response = await fetch(`${API_URL}/admin/${action}/${id}`, {
         method: "PATCH",
         headers: authHeaders(),
       });
@@ -88,7 +89,7 @@ export default function AdminRequests() {
   const handleDeletionDecision = async (id, action) => {
     setActingId(id);
     try {
-      const response = await fetch(`http://localhost:8080/admin/deletion-requests/${id}/${action}`, {
+      const response = await fetch(`${API_URL}/admin/deletion-requests/${id}/${action}`, {
         method: "PATCH",
         headers: authHeaders(),
       });
@@ -110,7 +111,7 @@ export default function AdminRequests() {
   const handleBucketDecision = async (id, action) => {
     setActingId(id);
     try {
-      const response = await fetch(`http://localhost:8080/admin/bucket-requests/${id}/${action}`, {
+      const response = await fetch(`${API_URL}/admin/bucket-requests/${id}/${action}`, {
         method: "PATCH",
         headers: authHeaders(),
       });

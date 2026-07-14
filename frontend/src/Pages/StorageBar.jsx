@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { PieChart } from "lucide-react";
 import { formatStorage } from "../utils/format";
+import { API_URL } from "../utils/api";
 
 export default function StorageBar() {
   const [info, setInfo] = useState(null);
@@ -8,7 +9,7 @@ export default function StorageBar() {
   const fetchStorage = useCallback(async () => {
     const token = localStorage.getItem("token");
     try {
-      const response = await fetch("http://localhost:8080/storage", {
+      const response = await fetch(`${API_URL}/storage`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const result = await response.json();

@@ -18,6 +18,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { API_URL } from "../utils/api";
 
 const getFileIcon = (name) => {
   const ext = name.split(".").pop().toLowerCase();
@@ -67,7 +68,7 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
 
   const fetchFiles = async () => {
     try {
-      const response = await fetch("http://localhost:8080/files", {
+      const response = await fetch(`${API_URL}/files`, {
         headers: { Authorization: `Bearer ${token()}` },
       });
       const result = await response.json();
@@ -79,7 +80,7 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
 
   const fetchTrash = async () => {
     try {
-      const response = await fetch("http://localhost:8080/trash", {
+      const response = await fetch(`${API_URL}/trash`, {
         headers: { Authorization: `Bearer ${token()}` },
       });
       const result = await response.json();
@@ -118,7 +119,7 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`http://localhost:8080/files/${encodeURIComponent(fileName)}`, {
+      const response = await fetch(`${API_URL}/files/${encodeURIComponent(fileName)}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token()}` },
       });
@@ -141,7 +142,7 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
   // restore a file from trash back to My Drive
   const handleRestore = async (fileName) => {
     try {
-      const response = await fetch(`http://localhost:8080/trash/${encodeURIComponent(fileName)}/restore`, {
+      const response = await fetch(`${API_URL}/trash/${encodeURIComponent(fileName)}/restore`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token()}` },
       });
@@ -167,7 +168,7 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`http://localhost:8080/trash/${encodeURIComponent(fileName)}`, {
+      const response = await fetch(`${API_URL}/trash/${encodeURIComponent(fileName)}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token()}` },
       });
@@ -191,7 +192,7 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
     setOpenMenuFor(null);
 
     try {
-      const response = await fetch(`http://localhost:8080/files/${encodeURIComponent(fileName)}/share`, {
+      const response = await fetch(`${API_URL}/files/${encodeURIComponent(fileName)}/share`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token()}` },
       });
@@ -229,7 +230,7 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/files/${encodeURIComponent(fileName)}/rename`, {
+      const response = await fetch(`${API_URL}/files/${encodeURIComponent(fileName)}/rename`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -255,7 +256,7 @@ export default function Mainright({ activeView = "drive", searchQuery = "" }) {
 
   const handleToggleStar = async (fileName) => {
     try {
-      const response = await fetch(`http://localhost:8080/files/${encodeURIComponent(fileName)}/star`, {
+      const response = await fetch(`${API_URL}/files/${encodeURIComponent(fileName)}/star`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token()}` },
       });

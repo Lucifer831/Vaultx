@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link2, Copy, Ban, FileText, Image as ImageIcon } from "lucide-react";
 import { toast } from "react-toastify";
+import { API_URL } from "../utils/api";
 
 const getFileIcon = (name) => {
   const ext = name.split(".").pop().toLowerCase();
@@ -22,7 +23,7 @@ export default function ActiveLinksList() {
 
   const fetchShares = async () => {
     try {
-      const response = await fetch("http://localhost:8080/shares", {
+      const response = await fetch(`${API_URL}/shares`, {
         headers: { Authorization: `Bearer ${token()}` },
       });
       const result = await response.json();
@@ -56,7 +57,7 @@ export default function ActiveLinksList() {
 
     setRevokingId(id);
     try {
-      const response = await fetch(`http://localhost:8080/shares/${id}/revoke`, {
+      const response = await fetch(`${API_URL}/shares/${id}/revoke`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token()}` },
       });

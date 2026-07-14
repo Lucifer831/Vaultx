@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import AdminLayout from "../Component/AdminLayout";
 import { formatStorage } from "../utils/format";
+import { API_URL } from "../utils/api";
 
 const authHeaders = () => ({
   "Content-Type": "application/json",
@@ -37,11 +38,11 @@ export default function AdminDashboard() {
   const fetchAll = useCallback(async () => {
     try {
       const [statsRes, pendingRes, deletionRes, bucketRes, sharesRes] = await Promise.all([
-        fetch("http://localhost:8080/admin/stats", { headers: authHeaders() }),
-        fetch("http://localhost:8080/admin/pending", { headers: authHeaders() }),
-        fetch("http://localhost:8080/admin/deletion-requests", { headers: authHeaders() }),
-        fetch("http://localhost:8080/admin/bucket-requests", { headers: authHeaders() }),
-        fetch("http://localhost:8080/admin/shares", { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/stats`, { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/pending`, { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/deletion-requests`, { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/bucket-requests`, { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/shares`, { headers: authHeaders() }),
       ]);
 
       if (
@@ -107,7 +108,7 @@ export default function AdminDashboard() {
     setActingId(id);
 
     try {
-      const response = await fetch(`http://localhost:8080/admin/${action}/${id}`, {
+      const response = await fetch(`${API_URL}/admin/${action}/${id}`, {
         method: "PATCH",
         headers: authHeaders(),
       });
@@ -132,7 +133,7 @@ export default function AdminDashboard() {
     setActingId(id);
 
     try {
-      const response = await fetch(`http://localhost:8080/admin/deletion-requests/${id}/${action}`, {
+      const response = await fetch(`${API_URL}/admin/deletion-requests/${id}/${action}`, {
         method: "PATCH",
         headers: authHeaders(),
       });
@@ -157,7 +158,7 @@ export default function AdminDashboard() {
     setActingId(id);
 
     try {
-      const response = await fetch(`http://localhost:8080/admin/bucket-requests/${id}/${action}`, {
+      const response = await fetch(`${API_URL}/admin/bucket-requests/${id}/${action}`, {
         method: "PATCH",
         headers: authHeaders(),
       });
@@ -182,7 +183,7 @@ export default function AdminDashboard() {
     setActingId(id);
 
     try {
-      const response = await fetch(`http://localhost:8080/admin/shares/${id}/revoke`, {
+      const response = await fetch(`${API_URL}/admin/shares/${id}/revoke`, {
         method: "PATCH",
         headers: authHeaders(),
       });

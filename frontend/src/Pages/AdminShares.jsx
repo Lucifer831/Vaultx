@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { Link2, Ban } from "lucide-react";
 import AdminLayout from "../Component/AdminLayout";
+import { API_URL } from "../utils/api";
 
 const authHeaders = () => ({
   "Content-Type": "application/json",
@@ -16,7 +17,7 @@ export default function AdminShares() {
 
   const fetchShares = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:8080/admin/shares", {
+      const response = await fetch(`${API_URL}/admin/shares`, {
         headers: authHeaders(),
       });
 
@@ -42,7 +43,7 @@ export default function AdminShares() {
   const handleRevoke = async (id) => {
     setActingId(id);
     try {
-      const response = await fetch(`http://localhost:8080/admin/shares/${id}/revoke`, {
+      const response = await fetch(`${API_URL}/admin/shares/${id}/revoke`, {
         method: "PATCH",
         headers: authHeaders(),
       });

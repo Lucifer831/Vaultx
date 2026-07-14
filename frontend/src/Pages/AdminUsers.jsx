@@ -4,6 +4,7 @@ import { Search, UserPlus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../Component/AdminLayout";
 import { formatStorage } from "../utils/format";
+import { API_URL } from "../utils/api";
 
 const authHeaders = () => ({
   "Content-Type": "application/json",
@@ -28,7 +29,7 @@ export default function AdminUsers() {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:8080/admin/users", {
+      const response = await fetch(`${API_URL}/admin/users`, {
         headers: authHeaders(),
       });
 
@@ -54,7 +55,7 @@ export default function AdminUsers() {
     if (!window.confirm(`Delete ${name}? This also removes all of their files.`)) return;
 
     try {
-      const response = await fetch(`http://localhost:8080/admin/users/${id}`, {
+      const response = await fetch(`${API_URL}/admin/users/${id}`, {
         method: "DELETE",
         headers: authHeaders(),
       });
@@ -78,7 +79,7 @@ export default function AdminUsers() {
     setSubmitting(true);
 
     try {
-      const response = await fetch("http://localhost:8080/admin/users", {
+      const response = await fetch(`${API_URL}/admin/users`, {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify(form),

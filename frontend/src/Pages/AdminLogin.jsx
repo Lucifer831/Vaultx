@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { Link, useNavigate } from "react-router-dom";
 import { ShieldCheck, Mail, KeyRound, Lock, Fingerprint, ArrowLeft } from "lucide-react";
 import vault from "/vault1.png";
+import { API_URL } from "../utils/api";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8080/admin/login", {
+      const response = await fetch(`${API_URL}/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, id, password, globalPassword }),

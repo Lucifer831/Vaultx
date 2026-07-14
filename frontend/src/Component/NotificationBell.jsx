@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Bell, Upload, Trash2, RotateCcw, XCircle } from "lucide-react";
+import { API_URL } from "../utils/api";
 
 const iconFor = (type) => {
   if (type === "upload") return { Icon: Upload, color: "text-green-400" };
@@ -30,7 +31,7 @@ export default function NotificationBell() {
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch("http://localhost:8080/notifications", {
+      const response = await fetch(`${API_URL}/notifications`, {
         headers: { Authorization: `Bearer ${token()}` },
       });
       const result = await response.json();
@@ -68,7 +69,7 @@ export default function NotificationBell() {
     // clear instantly in the UI, then confirm with the server
     setUnreadCount(0);
     try {
-      await fetch("http://localhost:8080/notifications/read", {
+      await fetch(`${API_URL}/notifications/read`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token()}` },
       });

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { API_URL } from "./api";
 
 const authHeaders = () => ({
   "Content-Type": "application/json",
@@ -16,10 +17,10 @@ export function useAdminOverview() {
   const fetchOverview = useCallback(async () => {
     try {
       const [statsRes, pendingRes, deletionRes, bucketRes] = await Promise.all([
-        fetch("http://localhost:8080/admin/stats", { headers: authHeaders() }),
-        fetch("http://localhost:8080/admin/pending", { headers: authHeaders() }),
-        fetch("http://localhost:8080/admin/deletion-requests", { headers: authHeaders() }),
-        fetch("http://localhost:8080/admin/bucket-requests", { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/stats`, { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/pending`, { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/deletion-requests`, { headers: authHeaders() }),
+        fetch(`${API_URL}/admin/bucket-requests`, { headers: authHeaders() }),
       ]);
 
       const [statsData, pendingData, deletionData, bucketData] = await Promise.all([

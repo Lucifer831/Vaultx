@@ -15,15 +15,14 @@ app.use(cors())
 
 app.use(express.json());
 
+app.get("/",async (req,res)=>{
+    res.send("Hi this is response")
+})
+
 app.get('/s/:token', openSharedFile);
 
 app.use('/',Routes)
 app.use('/admin', AdminRoutes)
-
-
-app.get("/",async (req,res)=>{
-    res.send("Hi this is response")
-})
 
 const PORT = process.env.PORT;
 

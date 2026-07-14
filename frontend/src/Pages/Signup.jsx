@@ -1,6 +1,7 @@
 import { useForm} from "react-hook-form"
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { API_URL } from "../utils/api";
 
 
 
@@ -15,7 +16,7 @@ export default function Signup() {
 
       const onsubmit = async (data) => {
         try {
-          const response = await fetch("http://localhost:8080/signup", {
+          const response = await fetch(`${API_URL}/signup`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { API_URL } from "../utils/api";
 
 export default function NewFile() {
   const fileInputRef = useRef(null);
@@ -20,7 +21,7 @@ export default function NewFile() {
 
     try {
       setUploading(true);
-      const response = await fetch("http://localhost:8080/upload", {
+      const response = await fetch(`${API_URL}/upload`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

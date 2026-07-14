@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { API_URL } from "../utils/api";
 
 export default function Postverification() {
   const [otp, setOtp] = useState(["", "", "", ""]);
@@ -37,7 +38,7 @@ export default function Postverification() {
     }
 
     try {
-      const response = await fetch("http://localhost:8080/verifyemail", {
+      const response = await fetch(`${API_URL}/verifyemail`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otpemail: finalOtp }),
